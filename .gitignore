@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.vercel
+
+# Machine-local Claude Code permissions (absolute paths, not portable).
+# .claude/launch.json is intentionally tracked — it configures the dev server.
+.claude/settings.local.json
