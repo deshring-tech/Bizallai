@@ -23,7 +23,10 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(`pages:create:${clientKey(request)}`, { limit: 10, windowMs: 60 * 60_000 });
+    await enforceRateLimit(`pages:create:${clientKey(request)}`, {
+      limit: 10,
+      windowMs: 60 * 60_000,
+    });
 
     const body = await parseJsonBody(request, bodySchema);
     const user = await currentUser();

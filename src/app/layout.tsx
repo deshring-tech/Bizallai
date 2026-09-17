@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { siteUrl } from "@/lib/env";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "BizPage — one page where customers can actually book and pay",
+    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
     template: "%s",
   },
-  description:
-    "Describe your business, get a live page in under a minute. Bookings, prices, reviews and WhatsApp in one link.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: { type: "website", siteName: SITE_NAME },
   robots: { index: true, follow: true },
 };
 

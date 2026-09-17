@@ -19,9 +19,23 @@ import {
   type BusinessProfile,
   type Theme,
 } from "@/lib/domain/business";
+import { clientEnv } from "@/lib/env";
 import { badRequest, conflict, forbidden } from "@/lib/errors";
+import { keepStoredPhotos } from "@/lib/photo-url";
 import * as businesses from "@/lib/repositories/businesses";
 import { isValidSlug } from "@/lib/slug";
+
+/**
+ * Only photos in our own storage may be saved. The browser sends the whole
+ * profile, so a crafted request could otherwise put any image URL on a public
+ * page — one that breaks rendering, expires, or tracks visitors.
+ */
+function withStoredPhotosOnly(profile: BusinessProfile): BusinessProfile {
+  return {
+    ...profile,
+    photos: keepStoredPhotos(profile.photos, clientEnv.NEXT_PUBLIC_SUPABASE_URL),
+  };
+}
 
 /**
  * Creates the page. `ownerId` is null for the anonymous flow: the visitor gets
@@ -33,7 +47,7 @@ export async function createDraft(input: {
   profile: BusinessProfile;
   theme?: Theme;
 }): Promise<Business> {
-  const profile = businessProfileSchema.parse(input.profile);
+  const profile = withStoredPhotosOnly(businessProfileSchema.parse(input.profile));
   return businesses.create({
     ownerId: input.ownerId,
     profile,
@@ -50,7 +64,9 @@ export async function saveProfile(
   await businesses.findOwned(id, ownerId);
 
   return businesses.update(id, ownerId, {
-    ...(patch.profile ? { profile: businessProfileSchema.parse(patch.profile) } : {}),
+    ...(patch.profile
+      ? { profile: withStoredPhotosOnly(businessProfileSchema.parse(patch.profile)) }
+      : {}),
     ...(patch.theme ? { theme: themeSchema.parse(patch.theme) } : {}),
   });
 }

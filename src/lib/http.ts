@@ -6,8 +6,10 @@
  * Dependencies     zod, errors.
  */
 
+import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { z } from "zod";
+import { serverEnv } from "@/lib/env";
 import { AppError, badRequest, toAppError } from "@/lib/errors";
 
 export function jsonOk<T>(data: T, init?: ResponseInit): NextResponse {
@@ -59,9 +61,18 @@ export function flattenIssues(error: z.ZodError): Record<string, string> {
  * Best-effort client identifier for rate limiting. Proxy headers are spoofable,
  * so this throttles honest traffic and raises the cost of casual abuse — it is
  * not a security control.
+ *
+ * The address is reduced to a keyed hash because limiter keys are stored in the
+ * database: the same visitor still maps to the same key, but a stored key
+ * cannot be turned back into an IP address without the server's secret.
  */
 export function clientKey(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
   const first = forwarded?.split(",")[0]?.trim();
-  return first || request.headers.get("x-real-ip") || "anonymous";
+  const address = first || request.headers.get("x-real-ip") || "anonymous";
+
+  return createHmac("sha256", serverEnv().SUPABASE_SERVICE_ROLE_KEY)
+    .update(address)
+    .digest("base64url")
+    .slice(0, 32);
 }

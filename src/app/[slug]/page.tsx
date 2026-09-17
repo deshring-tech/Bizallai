@@ -11,6 +11,7 @@ import { BusinessPageView } from "@/components/page/BusinessPageView";
 import { ViewBeacon } from "@/components/page/ViewBeacon";
 import { averageRating, type Business } from "@/lib/domain/business";
 import { absoluteUrl } from "@/lib/env";
+import { toMajor } from "@/lib/format";
 import { findPublishedBySlug } from "@/lib/repositories/businesses";
 import { isValidSlug } from "@/lib/slug";
 
@@ -33,29 +34,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { profile } = business;
   const title = `${profile.name} — ${profile.tagline || profile.contact.city || "Book now"}`;
+  // `||`, not `??`: an empty tagline is still a string and must fall through.
   const description =
-    profile.about ??
-    profile.tagline ??
+    profile.about ||
+    profile.tagline ||
     `Prices, reviews and booking for ${profile.name}${profile.contact.city ? ` in ${profile.contact.city}` : ""}.`;
-  const cover = profile.photos[0]?.url;
+  const url = absoluteUrl(`/${business.slug}`);
 
+  // No image is declared here: `./opengraph-image.tsx` generates the share card,
+  // and Next.js ranks a file-based image above any set in this object.
   return {
     title,
     description,
-    alternates: { canonical: absoluteUrl(`/${business.slug}`) },
-    openGraph: {
-      type: "website",
-      title,
-      description,
-      url: absoluteUrl(`/${business.slug}`),
-      images: cover ? [{ url: cover }] : undefined,
-    },
-    twitter: {
-      card: cover ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: cover ? [cover] : undefined,
-    },
+    alternates: { canonical: url },
+    openGraph: { type: "website", title, description, url },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
@@ -110,7 +103,8 @@ function StructuredData({ business }: { business: Business }) {
     makesOffer: profile.plans.map((plan) => ({
       "@type": "Offer",
       name: plan.name,
-      price: (plan.priceMinor / 100).toFixed(2),
+      // Currency-aware: dividing by 100 would overstate zero-decimal currencies 100×.
+      price: toMajor(plan.priceMinor, profile.currency),
       priceCurrency: profile.currency,
     })),
   };

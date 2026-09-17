@@ -1,3 +1,6 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { allocateSlug, isReservedSlug, isValidSlug } from "@/lib/slug";
 
@@ -57,5 +60,44 @@ describe("allocateSlug", () => {
 
     expect(slug.startsWith("iron-fit")).toBe(true);
     expect(isValidSlug(slug)).toBe(true);
+  });
+});
+
+/**
+ * Reads the real `src/app` directory rather than a hand-kept list, so adding a
+ * new top-level route without reserving its slug fails this test — before a
+ * business named after that route can silently shadow it.
+ */
+describe("reserved slugs cover every application route", () => {
+  const APP_DIR = fileURLToPath(new URL("../../src/app", import.meta.url));
+  const METADATA_IMAGE_ROUTES = new Set(["icon", "apple-icon", "opengraph-image", "twitter-image"]);
+
+  function topLevelSegments(dir: string): string[] {
+    const segments: string[] = [];
+
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        // Route groups add no URL segment, so their children are top level.
+        if (entry.name.startsWith("(")) segments.push(...topLevelSegments(join(dir, entry.name)));
+        else if (!entry.name.startsWith("[") && !entry.name.startsWith("_")) segments.push(entry.name);
+        continue;
+      }
+
+      const base = entry.name.replace(/\.(tsx?|jsx?)$/, "");
+      if (METADATA_IMAGE_ROUTES.has(base)) segments.push(base);
+    }
+
+    return segments;
+  }
+
+  it("finds the application routes it is checking", () => {
+    // Guards the test itself: an empty scan would pass vacuously.
+    expect(topLevelSegments(APP_DIR)).toEqual(expect.arrayContaining(["dashboard", "create"]));
+  });
+
+  it("reserves each one", () => {
+    for (const segment of topLevelSegments(APP_DIR)) {
+      expect(isReservedSlug(segment), `"${segment}" is a route but not a reserved slug`).toBe(true);
+    }
   });
 });

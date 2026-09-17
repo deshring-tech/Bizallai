@@ -96,9 +96,15 @@ npm run build && npm start
 
 ## How a page gets made
 
-1. **`/create`** — the owner pastes an Instagram or website link.
-2. **`POST /api/import`** fetches it (`src/lib/scrape.ts`, with SSRF guards),
-   strips it to text, and Claude extracts a draft profile.
+1. **`/create`** — the owner pastes their website, or goes straight to the
+   interview. Instagram, Facebook and TikTok links are refused up front with a
+   clear message: those sites send automated visitors to a login page, so an
+   import from them could only fail.
+2. **`POST /api/import`** fetches the page (`src/lib/scrape.ts`), strips it to
+   text, and Claude extracts a draft profile. At the same time the page's
+   images are copied into our own storage (`src/lib/image-import.ts`). Pages
+   only ever show images we host: `next/image` refuses unknown hosts, and
+   social-media image links expire.
 3. **`POST /api/onboarding`** runs the interview. It is stateless: the client
    holds the transcript and the accumulated profile, so a dropped request costs
    one turn rather than the session. `mergeProfile` makes later answers win only
@@ -160,6 +166,91 @@ owning the business.
 
 ---
 
+## Email
+
+Two different things send email, and both need a real provider before launch.
+Resend covers both.
+
+**Sign-in links (Supabase Auth).** Supabase's built-in mailer only delivers to
+members of your own Supabase team and is heavily rate-limited, so real owners
+will not receive sign-in links until you connect your own SMTP server:
+
+1. Create a Resend account and verify your sending domain.
+2. Create a Resend API key with sending access.
+3. In the Supabase dashboard's Authentication settings, open **SMTP Settings**
+   and enable custom SMTP: host `smtp.resend.com`, port `465`, username
+   `resend`, and the API key as the password.
+4. Set the sender to an address on your verified domain.
+
+**Enquiry notifications (this app).** Set `RESEND_API_KEY` and `EMAIL_FROM`.
+When an enquiry arrives on a claimed page, its owner gets a plain-text email
+with the customer's name, number and a WhatsApp reply link. It is sent after the
+visitor's response (`after()` in `services/leads.ts`), so a slow or failing
+provider never affects the enquiry. Without the two variables the app logs one
+warning and carries on; enquiries still reach the dashboard.
+
+---
+
+## Abuse and cost controls
+
+- **Rate limits are shared across servers.** Counters live in Postgres
+  (`hit_rate_limit`), so they hold on serverless hosting, where each instance
+  has its own memory. If the database is slow or down, each instance falls back
+  to its own in-memory counter — limiting degrades, it never switches off. Page
+  view counting uses only the in-memory limiter, since a view is not worth a
+  database round trip.
+- **IP addresses are never stored.** Limiter keys use a keyed hash of the
+  client address.
+- **AI spend has a daily ceiling.** Setup chat turns and imports share
+  `AI_DAILY_REQUEST_LIMIT` per UTC day across all visitors, on top of the
+  per-visitor limits. Also set a monthly spend limit in the Anthropic console
+  as the final backstop.
+- **Enquiry forms carry a honeypot.** A submission that fills the hidden field
+  gets an ordinary success response and is not stored.
+- **Every unhandled server error is logged as one JSON line** by
+  `src/instrumentation.ts`, tagged with the digest the error page shows the
+  visitor. Hook an error tracker such as Sentry in there when you want alerts.
+
+---
+
+## Before launch
+
+The code is launch-ready; these steps are not code and cannot be done from the
+repository. Work through them in order.
+
+1. **Name the product.** `src/lib/site.ts` holds the name, tagline and brand
+   colour. Every page title, icon, share card and footer reads from it.
+2. **Set `NEXT_PUBLIC_CONTACT_EMAIL`.** `/privacy` and `/terms` show a visible
+   `[contact address not yet configured]` warning until it is set.
+3. **Have `/privacy` and `/terms` reviewed by a lawyer** for each market you
+   launch in. They are plain-language drafts that accurately describe what the
+   code does, not legal advice.
+4. **Re-run `supabase/schema.sql`** and set `NEXT_PUBLIC_SITE_URL` to the
+   production origin — canonical URLs, share cards and QR codes derive from it.
+5. **Prove Row Level Security.** Sign in as a second account and open the first
+   account's `/dashboard/<id>`. It must 404. This is the authorisation boundary
+   and it has never been exercised against a live database.
+6. **Check a share card.** Paste a published page link into WhatsApp, or into
+   Facebook's Sharing Debugger, and confirm the preview card renders.
+7. **Connect email** — custom SMTP in Supabase for sign-in links, and
+   `RESEND_API_KEY` plus `EMAIL_FROM` for enquiry notifications. See
+   [Email](#email). Without SMTP, owners cannot sign in.
+8. **Cap AI spend.** Set a monthly limit in the Anthropic console, and adjust
+   `AI_DAILY_REQUEST_LIMIT` to match.
+
+### What visitors see before they sign up
+
+- `/demo` — a fictional example page, clearly labelled, so prospects see the
+  product before building. Its enquiry form simulates success and writes
+  nothing. It is excluded from search indexing because its reviews are invented.
+- `/privacy` and `/terms` — linked from every marketing page and from the
+  enquiry form on every business page.
+- Generated favicon, home-screen icon, web manifest and share cards. Business
+  pages get their own card with name, price and rating, because a link preview
+  renders small and a photo cannot say what the business charges.
+
+---
+
 ## Security notes
 
 - **RLS is the authorisation boundary.** Owner-facing reads and writes go through
@@ -169,9 +260,17 @@ owning the business.
   a caller can only ever write into a page that is actually published — there is
   deliberately no public insert policy that would let anyone write anywhere.
 - **URL import is SSRF-guarded.** Hostnames are resolved and checked against
-  private ranges before the request, redirects are not followed (a public host
-  that 302s to `169.254.169.254` would otherwise defeat the check), and the body
-  is read under a hard byte ceiling.
+  private ranges before every request. Redirects are followed by hand and each
+  hop is re-checked, so a public host that 302s to `169.254.169.254` is refused
+  just like a direct link. Bodies are read under a hard byte ceiling.
+- **Pages only show images we host.** Imported images are copied into our
+  bucket, typed from their own file signature (never the remote
+  `Content-Type`, so an SVG or HTML file cannot slip in), and the API strips any
+  other photo URL from a saved profile.
+- **The counter functions are not public.** `record_page_view` and
+  `hit_rate_limit` are `security definer`, so execute rights are revoked from
+  the anon and authenticated roles; otherwise anyone with the public key could
+  inflate view counts or reset rate limits.
 - **Scraped page text is untrusted.** It is delimited and explicitly labelled as
   data in the prompt so instructions inside a third-party page are summarised,
   never followed.

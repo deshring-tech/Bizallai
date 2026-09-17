@@ -83,6 +83,65 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- rate_limits
+--
+-- Fixed-window counters shared by every server instance. On serverless
+-- hosting each instance has its own memory, so an in-process counter alone
+-- barely limits anything. Keys never contain a raw IP address: the app
+-- reduces client addresses to a keyed hash before they reach this table.
+-- ---------------------------------------------------------------------
+create table if not exists public.rate_limits (
+  key       text primary key,
+  count     integer not null,
+  reset_at  timestamptz not null
+);
+
+create index if not exists rate_limits_reset_at_idx on public.rate_limits (reset_at);
+
+-- No policies: only `hit_rate_limit`, called with the service-role key, touches this table.
+alter table public.rate_limits enable row level security;
+
+create or replace function public.hit_rate_limit(
+  bucket_key     text,
+  max_hits       integer,
+  window_seconds integer
+)
+returns table (allowed boolean, retry_after_seconds integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hit public.rate_limits;
+begin
+  insert into public.rate_limits as r (key, count, reset_at)
+  values (bucket_key, 1, now() + make_interval(secs => window_seconds))
+  on conflict (key) do update
+    set count    = case when r.reset_at <= now() then 1 else r.count + 1 end,
+        reset_at = case when r.reset_at <= now()
+                        then now() + make_interval(secs => window_seconds)
+                        else r.reset_at end
+  returning * into hit;
+
+  -- Housekeeping on the write path: windows that ended over an hour ago are
+  -- removed as traffic arrives, using the reset_at index, so the table stays small.
+  delete from public.rate_limits where reset_at < now() - interval '1 hour';
+
+  return query
+    select hit.count <= max_hits,
+           greatest(0, ceil(extract(epoch from hit.reset_at - now())))::integer;
+end;
+$$;
+
+-- Both counters are security definer, and Postgres lets everyone execute a new
+-- function by default. Without these revokes, anyone holding the public anon
+-- key could inflate any page's views or reset rate limits through the API.
+revoke execute on function public.record_page_view(uuid) from public, anon, authenticated;
+revoke execute on function public.hit_rate_limit(text, integer, integer) from public, anon, authenticated;
+grant execute on function public.record_page_view(uuid) to service_role;
+grant execute on function public.hit_rate_limit(text, integer, integer) to service_role;
+
+-- ---------------------------------------------------------------------
 -- updated_at maintenance
 -- ---------------------------------------------------------------------
 create or replace function public.touch_updated_at()

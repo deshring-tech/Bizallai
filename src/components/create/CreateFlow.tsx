@@ -60,7 +60,7 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
   );
 
   const sendTurn = useCallback(
-    async (message: string, nextTurns: ConversationTurn[], seedContext?: string) => {
+    async (nextTurns: ConversationTurn[]) => {
       setPending(true);
       setError(null);
 
@@ -70,7 +70,7 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
           body: {
             turns: nextTurns,
             known: profile ?? undefined,
-            importedContext: seedContext ?? importedContext,
+            importedContext,
           },
         });
 
@@ -85,7 +85,6 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
       } finally {
         setPending(false);
       }
-      void message;
     },
     [importedContext, profile],
   );
@@ -94,7 +93,7 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
     (message: string) => {
       const nextTurns: ConversationTurn[] = [...turns, { role: "user", content: message }];
       setTurns(nextTurns);
-      void sendTurn(message, nextTurns);
+      void sendTurn(nextTurns);
     },
     [sendTurn, turns],
   );
@@ -182,8 +181,12 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
         <h2 className="sr-only">Live preview of your page</h2>
         {previewBusiness ? (
           <div className="card overflow-hidden">
-            {/* A preview should be looked at, not submitted through. */}
-            <div className="pointer-events-none select-none" aria-hidden="true">
+            {/*
+              A preview is looked at, not used. `inert` removes its buttons from
+              tab order and the accessibility tree; `aria-hidden` alone left
+              focusable controls hidden from screen readers.
+            */}
+            <div inert className="select-none">
               <BusinessPageView business={previewBusiness} hideFooter />
             </div>
           </div>

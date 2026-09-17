@@ -94,9 +94,10 @@ on your behalf.
 
 **What to test.** Not everything, and not the framework. Test the logic that is
 easy to break and expensive to get wrong: the AI merge (`mergeProfile`), money
-conversion, slug allocation, and the SSRF guards. A test that only restates the
-implementation is worse than no test — it locks in the current shape and catches
-nothing.
+conversion, slug allocation, the SSRF guards, which photo URLs a page may show,
+image type detection, and rate limiting while the database is down. A test that
+only restates the implementation is worse than no test — it locks in the current
+shape and catches nothing.
 
 **Every completed change must state how it was verified.** "Should work" is not
 a report. If something was not verified, say so explicitly and say why.
@@ -118,8 +119,12 @@ strangers and stores customers' phone numbers.
   why it is safe.
 - **Validate at the boundary, with a schema.** Route handlers parse bodies with
   zod. Never trust a shape because the client is ours.
-- **Outbound fetches to user-supplied URLs are SSRF risks.** Resolve and check
-  the address, refuse redirects, cap the response size.
+- **Outbound fetches to user-supplied URLs are SSRF risks.** Go through
+  `scrape.ts`: it resolves and checks the address, re-checks it on every
+  redirect hop, and caps the response size.
+- **Only images in our own storage may appear on a page.** Copy remote images
+  in, and identify their type from the file's bytes — never from a remote
+  `Content-Type` header.
 - **Third-party text reaching a model is untrusted.** Delimit it and label it as
   data, never as instructions.
 - **Redirect targets must be same-site relative paths.** No open redirects.

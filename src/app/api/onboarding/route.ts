@@ -24,7 +24,7 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(`onboarding:${clientKey(request)}`, { limit: 40, windowMs: 60_000 });
+    await enforceRateLimit(`onboarding:${clientKey(request)}`, { limit: 40, windowMs: 60_000 });
 
     const body = await parseJsonBody(request, bodySchema);
     const result = await runOnboardingTurn(body);

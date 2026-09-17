@@ -25,7 +25,9 @@ export function Hero({ profile }: Props) {
           />
         </div>
       ) : (
-        <div className="brand-tint aspect-[16/7] w-full" aria-hidden="true" />
+        // Without a photo, a thin stripe keeps the brand colour without spending
+        // the top of a phone screen on an empty block.
+        <div className="brand-bg h-2 w-full" aria-hidden="true" />
       )}
 
       <div className="px-5 pt-5">

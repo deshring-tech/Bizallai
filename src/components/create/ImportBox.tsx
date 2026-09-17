@@ -10,8 +10,10 @@ type Props = {
 };
 
 /**
- * The cold-start remover. Pasting one link beats answering ten questions, so
- * this is the first thing an owner sees — and the clip that sells the product.
+ * The cold-start remover: pasting one link beats answering ten questions.
+ * It asks for the owner's own website because social networks block automated
+ * reading — the describe-it path is presented as an equal option, not a fallback,
+ * since many owners have no website at all.
  */
 export function ImportBox({ pending, error, onImport, onSkip }: Props) {
   const [value, setValue] = useState("");
@@ -28,12 +30,12 @@ export function ImportBox({ pending, error, onImport, onSkip }: Props) {
         Your business page, in a minute
       </h1>
       <p className="mt-2 text-center text-[15px] text-[color:var(--color-muted)]">
-        Paste your Instagram or existing website and we&apos;ll build it from what&apos;s already there.
+        Paste your website and we&apos;ll build your page from what&apos;s already there.
       </p>
 
       <form onSubmit={submit} className="mt-6">
         <label htmlFor="import-url" className="sr-only">
-          Your website or Instagram link
+          Your website address
         </label>
         <input
           id="import-url"
@@ -41,7 +43,7 @@ export function ImportBox({ pending, error, onImport, onSkip }: Props) {
           onChange={(event) => setValue(event.target.value)}
           inputMode="url"
           autoComplete="url"
-          placeholder="instagram.com/yourbusiness"
+          placeholder="yourbusiness.com"
           className="w-full rounded-xl border border-[color:var(--color-hairline)] px-4 py-3.5 text-[15px] outline-none"
         />
 
@@ -50,7 +52,7 @@ export function ImportBox({ pending, error, onImport, onSkip }: Props) {
           disabled={pending || value.trim().length === 0}
           className="brand-bg mt-3 w-full rounded-xl px-4 py-3.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Reading your page…" : "Build my page"}
+          {pending ? "Reading your website…" : "Build my page"}
         </button>
       </form>
 
@@ -66,7 +68,7 @@ export function ImportBox({ pending, error, onImport, onSkip }: Props) {
         disabled={pending}
         className="mt-4 w-full text-center text-[14px] text-[color:var(--color-muted)] underline underline-offset-2 disabled:opacity-50"
       >
-        I&apos;ll just describe my business instead
+        No website? Describe your business instead
       </button>
     </div>
   );

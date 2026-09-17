@@ -6,13 +6,18 @@ import { PlanList } from "@/components/page/PlanList";
 import type { BusinessProfile, Plan } from "@/lib/domain/business";
 import { telLink, whatsappLink } from "@/lib/format";
 
-type Props = { slug: string; profile: BusinessProfile };
+type Props = {
+  slug: string;
+  profile: BusinessProfile;
+  /** The public example page: enquiries are simulated rather than sent. */
+  demo?: boolean;
+};
 
 /**
  * Owns the one piece of state the public page needs: which plan the visitor
  * tapped. Keeping it here means the rest of the page stays server-rendered.
  */
-export function ActionSection({ slug, profile }: Props) {
+export function ActionSection({ slug, profile, demo = false }: Props) {
   const [selected, setSelected] = useState<Plan | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +48,7 @@ export function ActionSection({ slug, profile }: Props) {
             slug={slug}
             actionLabel={profile.primaryActionLabel}
             planName={selected?.name}
+            demo={demo}
           />
         </div>
       </section>

@@ -44,6 +44,8 @@ export function formatMoney(minorAmount: number, currency: string, locale = "en"
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
+      // "Rs 3,500" reads better than "Rs 3,500.00"; a real fraction keeps its digits.
+      minimumFractionDigits: Number.isInteger(major) ? 0 : minorUnitDigits(currency),
     }).format(major);
   } catch {
     return `${currency} ${major.toLocaleString(locale)}`;

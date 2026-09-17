@@ -40,6 +40,12 @@ describe("money", () => {
     expect(formatMoney(1550, "USD")).toBe("$15.50");
   });
 
+  it("drops the decimals from whole amounts but keeps real fractions", () => {
+    // `\s` rather than a space: Intl may separate the symbol with a no-break space.
+    expect(formatMoney(350_000, "NPR")).toMatch(/^Rs\s?3,500$/);
+    expect(formatMoney(1550, "USD")).toBe("$15.50");
+  });
+
   it("falls back rather than throwing on an unknown currency code", () => {
     expect(formatMoney(1000, "ZZZ")).toContain("ZZZ");
   });

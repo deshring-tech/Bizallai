@@ -20,7 +20,9 @@ import {
   type BusinessStatus,
   type Theme,
 } from "@/lib/domain/business";
+import { clientEnv } from "@/lib/env";
 import { conflict, notFound, upstreamFailed } from "@/lib/errors";
+import { keepStoredPhotos } from "@/lib/photo-url";
 import { allocateSlug } from "@/lib/slug";
 import { serviceClient, sessionClient, type Db } from "@/lib/supabase/server";
 import type { BusinessRow } from "@/lib/supabase/types";
@@ -32,12 +34,19 @@ const COLUMNS = "id, owner_id, slug, status, profile, theme, created_at, updated
  * missing a newly added field still renders rather than crashing the page.
  */
 function toBusiness(row: BusinessRow): Business {
+  const profile = businessProfileSchema.parse(row.profile ?? {});
+
   return {
     id: row.id,
     ownerId: row.owner_id,
     slug: row.slug,
     status: row.status,
-    profile: businessProfileSchema.parse(row.profile ?? {}),
+    // A foreign image URL makes `next/image` throw. Writes already refuse them;
+    // this keeps a row from before that rule from taking its page down.
+    profile: {
+      ...profile,
+      photos: keepStoredPhotos(profile.photos, clientEnv.NEXT_PUBLIC_SUPABASE_URL),
+    },
     theme: themeSchema.parse(row.theme ?? {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,

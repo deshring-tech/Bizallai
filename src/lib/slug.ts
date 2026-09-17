@@ -15,25 +15,32 @@ import { slugify } from "@/lib/format";
  * Kept here because the constraint belongs to slug allocation, not to routing.
  */
 const RESERVED_SLUGS = new Set([
-  "api",
-  "app",
   "about",
   "admin",
+  "api",
+  "app",
+  "apple-icon",
   "auth",
   "billing",
+  "claim",
   "create",
   "dashboard",
+  "demo",
   "docs",
   "help",
+  // Next.js serves generated metadata images at these top-level paths.
+  "icon",
   "login",
   "logout",
   "new",
+  "opengraph-image",
   "pricing",
   "privacy",
   "settings",
   "signup",
   "support",
   "terms",
+  "twitter-image",
   "www",
 ]);
 

@@ -5,25 +5,28 @@ import { Gallery } from "@/components/page/Gallery";
 import { Hero } from "@/components/page/Hero";
 import { Reviews } from "@/components/page/Reviews";
 import type { Business } from "@/lib/domain/business";
+import { SITE_NAME } from "@/lib/site";
 import { themeStyle } from "@/lib/theme";
 
 type Props = {
   business: Business;
   /** Rendered inside a dashboard preview, where the footer link is noise. */
   hideFooter?: boolean;
+  /** The public example page: enquiries are simulated rather than sent. */
+  demo?: boolean;
 };
 
 /**
  * The published page. Server-rendered so it loads fast on a cheap phone and is
  * fully indexable; only the plan-selection and lead form ship JavaScript.
  */
-export function BusinessPageView({ business, hideFooter = false }: Props) {
+export function BusinessPageView({ business, hideFooter = false, demo = false }: Props) {
   const { profile, slug, theme } = business;
 
   return (
     <div style={themeStyle(theme)} className="mx-auto min-h-dvh max-w-[640px] bg-white pb-2">
       <Hero profile={profile} />
-      <ActionSection slug={slug} profile={profile} />
+      <ActionSection slug={slug} profile={profile} demo={demo} />
       <About profile={profile} />
       <Gallery photos={profile.photos} businessName={profile.name} />
       <Reviews reviews={profile.reviews} />
@@ -35,7 +38,7 @@ export function BusinessPageView({ business, hideFooter = false }: Props) {
             href="/?ref=page-footer"
             className="text-[12px] text-[color:var(--color-muted)] underline underline-offset-2"
           >
-            Made with BizPage
+            Made with {SITE_NAME}
           </Link>
         </footer>
       )}

@@ -71,10 +71,6 @@
     color: var(--brand);
   }
 
-  .brand-border {
-    border-color: var(--brand);
-  }
-
   /* Tinted surface derived from the page's own brand colour. */
   .brand-tint {
     background-color: color-mix(in srgb, var(--brand) 8%, white);
@@ -84,6 +80,52 @@
     background: var(--color-canvas);
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-card);
+  }
+
+  /*
+    Must stay after `.card`: both live in this layer, and `.card`'s `border`
+    shorthand would otherwise reset the colour — which is exactly how the
+    featured plan and unread leads lost their highlight before.
+  */
+  .brand-border {
+    border-color: var(--brand);
+  }
+
+  /* Long-form text on the privacy and terms pages. */
+  .legal h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+
+  .legal h2 {
+    margin-top: 2rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .legal p,
+  .legal li {
+    margin-top: 0.75rem;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--color-muted);
+  }
+
+  .legal ul {
+    margin-top: 0.5rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+
+  .legal strong {
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  .legal a {
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 }
 

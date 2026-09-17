@@ -20,7 +20,7 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(`import:${clientKey(request)}`, { limit: 8, windowMs: 60_000 });
+    await enforceRateLimit(`import:${clientKey(request)}`, { limit: 8, windowMs: 60_000 });
 
     const { url } = await parseJsonBody(request, bodySchema);
     const result = await importFromUrl(withProtocol(url));

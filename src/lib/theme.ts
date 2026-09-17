@@ -10,9 +10,14 @@
 
 import type { CSSProperties } from "react";
 import type { Theme } from "@/lib/domain/business";
+import { BRAND_COLOR } from "@/lib/site";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const FALLBACK = "#1d9e75";
+
+/** The page's brand colour, or the product default when stored data is malformed. */
+export function brandColor(theme: Theme): string {
+  return HEX.test(theme.brand) ? theme.brand : BRAND_COLOR;
+}
 
 function channels(hex: string): [number, number, number] {
   return [
@@ -42,7 +47,7 @@ export function contrastColor(hex: string): "#ffffff" | "#16171a" {
  * and no untrusted text can break out into the stylesheet.
  */
 export function themeStyle(theme: Theme): CSSProperties {
-  const brand = HEX.test(theme.brand) ? theme.brand : FALLBACK;
+  const brand = brandColor(theme);
 
   return {
     "--brand": brand,

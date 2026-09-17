@@ -270,7 +270,8 @@ export function ProfileEditor({ business, userId }: { business: Business; userId
       <aside className="order-1 lg:order-2 lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:overflow-y-auto">
         <h2 className="mb-2 text-[13px] font-medium text-[color:var(--color-muted)]">Preview</h2>
         <div className="card overflow-hidden">
-          <div className="pointer-events-none select-none" aria-hidden="true">
+          {/* `inert` removes the preview's buttons from tab order and the accessibility tree. */}
+          <div inert className="select-none">
             <BusinessPageView business={preview} hideFooter />
           </div>
         </div>

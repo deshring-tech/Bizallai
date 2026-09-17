@@ -60,9 +60,21 @@ export type PageViewDayRow = {
   views: number;
 };
 
+export type RateLimitRow = {
+  key: string;
+  count: number;
+  reset_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
+      rate_limits: {
+        Row: RateLimitRow;
+        Insert: RateLimitRow;
+        Update: Partial<RateLimitRow>;
+        Relationships: [];
+      };
       page_view_days: {
         Row: PageViewDayRow;
         Insert: PageViewDayRow;
@@ -87,6 +99,10 @@ export type Database = {
       record_page_view: {
         Args: { target_business_id: string };
         Returns: undefined;
+      };
+      hit_rate_limit: {
+        Args: { bucket_key: string; max_hits: number; window_seconds: number };
+        Returns: { allowed: boolean; retry_after_seconds: number }[];
       };
     };
     Enums: Record<never, never>;

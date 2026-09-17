@@ -12,7 +12,7 @@
 import type { NextRequest } from "next/server";
 import { AppError } from "@/lib/errors";
 import { clientKey } from "@/lib/http";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { enforceLocalRateLimit } from "@/lib/rate-limit";
 import { recordView } from "@/lib/repositories/analytics";
 import { findPublishedBySlug } from "@/lib/repositories/businesses";
 
@@ -25,8 +25,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
 
     // Blunt-instrument throttle: without it a refresh loop could inflate a
     // count to meaninglessness. Generous enough not to undercount a family
-    // sharing one connection.
-    enforceRateLimit(`view:${clientKey(request)}:${slug}`, { limit: 20, windowMs: 60_000 });
+    // sharing one connection. Deliberately the in-process limiter: this runs on
+    // every page view, and a view count is not worth a database round trip.
+    enforceLocalRateLimit(`view:${clientKey(request)}:${slug}`, { limit: 20, windowMs: 60_000 });
 
     const business = await findPublishedBySlug(slug);
     if (business) await recordView(business.id);
