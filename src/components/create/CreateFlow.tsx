@@ -5,7 +5,9 @@ import { BusinessPageView } from "@/components/page/BusinessPageView";
 import { ChatPanel } from "@/components/create/ChatPanel";
 import { ImportBox } from "@/components/create/ImportBox";
 import { PublishPanel } from "@/components/create/PublishPanel";
+import { PhotosEditor } from "@/components/photos/PhotosEditor";
 import { ApiError, apiRequest } from "@/lib/api-client";
+import { uploadPhotoToServer } from "@/lib/storage";
 import type { ConversationTurn } from "@/lib/ai/onboarding";
 import type { Business, BusinessProfile, Theme } from "@/lib/domain/business";
 
@@ -75,7 +77,11 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
         });
 
         setTurns([...nextTurns, { role: "assistant", content: result.reply }]);
-        setProfile(result.profile);
+        // Photos are only ever added here in the browser, so keep the ones on
+        // screen: a turn that started before an upload must not drop them.
+        setProfile((current) =>
+          current?.photos.length ? { ...result.profile, photos: current.photos } : result.profile,
+        );
         setTheme(result.theme);
         setReady(result.ready);
       } catch (cause) {
@@ -201,6 +207,21 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
         <div className="flex-1 overflow-hidden">
           <ChatPanel turns={turns} pending={pending} error={error} onSend={handleSend} />
         </div>
+
+        {/*
+          Photos before sign-up. A page built by chat has none otherwise, and a
+          page with no pictures is the weakest thing an owner can publish.
+        */}
+        {profile ? (
+          <div className="mt-4">
+            <PhotosEditor
+              photos={profile.photos}
+              onChange={(photos) => setProfile({ ...profile, photos })}
+              upload={uploadPhotoToServer}
+              description="Add a few now — pages with photos get far more enquiries."
+            />
+          </div>
+        ) : null}
 
         <div className="mt-4">
           <PublishPanel

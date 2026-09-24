@@ -17,7 +17,7 @@
 import "server-only";
 
 import type { PhotoType } from "@/lib/photo-url";
-import { storeImportedImage } from "@/lib/repositories/photos";
+import { storeImage } from "@/lib/repositories/photos";
 import { fetchPublicBytes } from "@/lib/scrape";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -75,5 +75,5 @@ async function copyOne(url: string): Promise<string | null> {
   const type = sniffImageType(bytes);
   if (!type) return null;
 
-  return storeImportedImage(bytes, type);
+  return storeImage(bytes, type, "imported");
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PhotosEditor } from "@/components/dashboard/editor/PhotosEditor";
 import { PlansEditor } from "@/components/dashboard/editor/PlansEditor";
 import { ReviewsEditor } from "@/components/dashboard/editor/ReviewsEditor";
 import { BusinessPageView } from "@/components/page/BusinessPageView";
+import { PhotosEditor } from "@/components/photos/PhotosEditor";
 import { SelectField, Section, TextArea, TextField } from "@/components/ui/Field";
 import { ApiError, apiRequest } from "@/lib/api-client";
+import { deletePhoto, uploadPhoto } from "@/lib/storage";
 import {
   BUSINESS_CATEGORIES,
   CATEGORY_LABELS,
@@ -236,9 +237,10 @@ export function ProfileEditor({ business, userId }: { business: Business; userId
 
         <PhotosEditor
           photos={profile.photos}
-          userId={userId}
-          businessId={business.id}
           onChange={(photos) => patch({ photos })}
+          // Signed in here, so the file goes straight to storage.
+          upload={async (file) => uploadPhoto(file, { userId, businessId: business.id })}
+          onRemove={(photo) => void deletePhoto(photo.url)}
         />
 
         <ReviewsEditor reviews={profile.reviews} onChange={(reviews) => patch({ reviews })} />

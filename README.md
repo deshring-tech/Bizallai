@@ -121,6 +121,12 @@ npm run build && npm start
 7. **`POST /api/p/[slug]/leads`** captures the enquiry and returns a WhatsApp
    deep link so the conversation continues where the owner actually reads it.
 
+Photos can be added at any point during setup, **before there is an account**:
+the browser shrinks the file, `POST /api/uploads` confirms the bytes really are
+an image, and it is stored with the service-role key. Anonymous visitors cannot
+write to storage directly — the policy keys every object to a user id — and a
+page with no pictures is not worth publishing.
+
 The dashboard also carries a **printable QR code** for the published URL. It is
 generated on the server (`src/lib/qr.ts`), so the QR library never enters the
 browser bundle — adding it grew the dashboard route by 0.7 kB. In these markets

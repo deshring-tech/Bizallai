@@ -4,18 +4,32 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { Section } from "@/components/ui/Field";
 import type { Photo } from "@/lib/domain/business";
-import { ACCEPTED_IMAGE_TYPES, UploadError, deletePhoto, uploadPhoto } from "@/lib/storage";
+import { ACCEPTED_IMAGE_TYPES, UploadError } from "@/lib/storage";
 
 type Props = {
   photos: Photo[];
-  userId: string;
-  businessId: string;
   onChange: (photos: Photo[]) => void;
+  /**
+   * How a chosen file becomes a stored photo: straight to storage once signed
+   * in, through the server before that. The component does not care which.
+   */
+  upload: (file: File) => Promise<Photo>;
+  /** Optional cleanup when a photo is removed. */
+  onRemove?: (photo: Photo) => void;
+  title?: string;
+  description?: string;
 };
 
 const MAX_PHOTOS = 24;
 
-export function PhotosEditor({ photos, userId, businessId, onChange }: Props) {
+export function PhotosEditor({
+  photos,
+  onChange,
+  upload,
+  onRemove,
+  title = "Photos",
+  description = "The first photo is the one customers see at the top.",
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -29,16 +43,14 @@ export function PhotosEditor({ photos, userId, businessId, onChange }: Props) {
 
     // Uploaded in parallel, but committed to the profile in one update so a
     // partial failure cannot leave the list half written.
-    const results = await Promise.allSettled(
-      files.map((file) => uploadPhoto(file, { userId, businessId })),
-    );
+    const results = await Promise.allSettled(files.map((file) => upload(file)));
 
     const added: Photo[] = [];
     let failure: string | null = null;
 
     for (const result of results) {
       if (result.status === "fulfilled") {
-        added.push({ url: result.value.url });
+        added.push(result.value);
       } else if (!failure) {
         failure =
           result.reason instanceof UploadError
@@ -58,7 +70,7 @@ export function PhotosEditor({ photos, userId, businessId, onChange }: Props) {
     onChange(photos.filter((_, position) => position !== index));
 
     // Fire and forget: an orphaned object is cheaper than a blocked edit.
-    if (photo) void deletePhoto(photo.url);
+    if (photo) onRemove?.(photo);
   }
 
   /** The first photo is the page's cover, so promoting one is just a reorder. */
@@ -71,11 +83,11 @@ export function PhotosEditor({ photos, userId, businessId, onChange }: Props) {
   const atLimit = photos.length >= MAX_PHOTOS;
 
   return (
-    <Section title="Photos" description="The first photo is the one customers see at the top.">
+    <Section title={title} description={description}>
       {photos.length > 0 ? (
         <ul className="grid grid-cols-3 gap-2">
           {photos.map((photo, index) => (
-            <li key={photo.url} className="group relative aspect-square overflow-hidden rounded-xl">
+            <li key={photo.url} className="relative aspect-square overflow-hidden rounded-xl">
               <Image
                 src={photo.url}
                 alt={photo.alt ?? `Photo ${index + 1}`}
