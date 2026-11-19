@@ -31,6 +31,7 @@ import {
   type BusinessProfile,
   type Theme,
 } from "@/lib/domain/business";
+import { conversationTurnSchema, type ConversationTurn } from "@/lib/domain/conversation";
 import { upstreamFailed } from "@/lib/errors";
 
 /**
@@ -95,12 +96,8 @@ Rules that matter
 
 On every single turn, call ${SAVE_TOOL_NAME} with the full profile as you currently understand it, then reply to the owner in text.`;
 
-export const conversationTurnSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string().trim().min(1).max(4_000),
-});
-
-export type ConversationTurn = z.infer<typeof conversationTurnSchema>;
+// Re-exported so API routes keep importing their request shape from one place.
+export { conversationTurnSchema, type ConversationTurn };
 
 export type OnboardingResult = {
   /** Message to display to the owner. */

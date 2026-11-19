@@ -25,7 +25,8 @@ const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    await enforceRateLimit(`upload:${clientKey(request)}`, { limit: 30, windowMs: 10 * 60_000 });
+    // A page can hold 24 photos, and several owners may share one mobile address.
+    await enforceRateLimit(`upload:${clientKey(request)}`, { limit: 80, windowMs: 10 * 60_000 });
 
     const form = await request.formData().catch(() => null);
     const file = form?.get("file");

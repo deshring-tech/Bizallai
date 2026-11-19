@@ -23,8 +23,9 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Loose enough for several owners sharing one mobile address.
     await enforceRateLimit(`pages:create:${clientKey(request)}`, {
-      limit: 10,
+      limit: 25,
       windowMs: 60 * 60_000,
     });
 

@@ -25,9 +25,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     const { slug } = await context.params;
     const client = clientKey(request);
 
-    // Per-page as well as per-client: one abusive visitor cannot lock out a
-    // busy gym's real customers, and one page cannot be flooded from many IPs.
-    await enforceRateLimit(`lead:${client}`, { limit: 6, windowMs: 10 * 60_000 });
+    /*
+      The per-page cap is the real flood control. The per-client one is
+      deliberately loose because mobile networks in our first markets put many
+      customers behind one address: a tight limit there would start refusing a
+      busy gym's genuine enquiries, which is far worse than letting a few extra
+      through to an owner who can see and ignore them.
+    */
+    await enforceRateLimit(`lead:${client}`, { limit: 20, windowMs: 10 * 60_000 });
     await enforceRateLimit(`lead:page:${slug}`, { limit: 120, windowMs: 10 * 60_000 });
 
     const { website, ...submission } = await parseJsonBody(request, requestSchema);

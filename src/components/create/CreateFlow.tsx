@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BusinessPageView } from "@/components/page/BusinessPageView";
 import { ChatPanel } from "@/components/create/ChatPanel";
 import { ImportBox } from "@/components/create/ImportBox";
 import { PublishPanel } from "@/components/create/PublishPanel";
 import { PhotosEditor } from "@/components/photos/PhotosEditor";
 import { ApiError, apiRequest } from "@/lib/api-client";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/draft-storage";
 import { uploadPhotoToServer } from "@/lib/storage";
-import type { ConversationTurn } from "@/lib/ai/onboarding";
+import type { ConversationTurn } from "@/lib/domain/conversation";
 import type { Business, BusinessProfile, Theme } from "@/lib/domain/business";
 
 type Phase = "import" | "chat";
@@ -35,11 +36,12 @@ const OPENING_LINE =
   "Tell me about your business — what you do and where you are. I'll build the page as we talk.";
 
 /**
- * Orchestrates the whole setup: import, interview, live preview, publish.
+ * Orchestrates the whole setup: import, interview, photos, live preview, publish.
  *
  * The transcript and the accumulated profile live here rather than on the
  * server, which keeps the API stateless and means a dropped request costs one
- * turn instead of the session.
+ * turn instead of the session. They are mirrored into browser storage so a
+ * reload costs nothing at all.
  */
 export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
   const [phase, setPhase] = useState<Phase>("import");
@@ -55,6 +57,32 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<PublishedPage | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+
+  /** Storage is only readable after mount, so the first paint waits for it. */
+  const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    const draft = loadDraft();
+
+    if (draft && (draft.turns.length > 0 || draft.profile)) {
+      setTurns(draft.turns);
+      setProfile(draft.profile);
+      setTheme(draft.theme);
+      setImportedContext(draft.importedContext);
+      setReady(draft.ready);
+      setPhase("chat");
+    }
+
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    // Saving before the restore would overwrite the draft with empty state.
+    // A published page is finished, and keeping it would re-open stale setup.
+    if (!restored || published || phase !== "chat") return;
+
+    saveDraft({ turns, profile, theme, importedContext, ready });
+  }, [restored, published, phase, turns, profile, theme, importedContext, ready]);
 
   const previewBusiness = useMemo<Business | null>(
     () => (profile ? toPreviewBusiness(profile, theme) : null),
@@ -138,6 +166,20 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
     setTurns([{ role: "assistant", content: OPENING_LINE }]);
   }, []);
 
+  /** A restored draft with no way out would trap an owner starting a second page. */
+  const handleStartOver = useCallback(() => {
+    clearDraft();
+    setPhase("import");
+    setTurns([]);
+    setProfile(null);
+    setTheme(null);
+    setImportedContext(undefined);
+    setReady(false);
+    setError(null);
+    setPublished(null);
+    setPublishError(null);
+  }, []);
+
   const handlePublish = useCallback(async () => {
     if (!profile) return;
 
@@ -161,6 +203,7 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
         slug: business.slug,
         needsClaim: business.ownerId === null,
       });
+      clearDraft();
     } catch (cause) {
       setPublishError(
         cause instanceof ApiError ? cause.message : "Could not publish. Please try again.",
@@ -169,6 +212,9 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
       setPublishing(false);
     }
   }, [profile, theme]);
+
+  // One empty frame rather than a flash of the import screen over a saved draft.
+  if (!restored) return <div className="min-h-dvh" aria-busy="true" />;
 
   if (phase === "import") {
     return (
@@ -233,6 +279,14 @@ export function CreateFlow({ siteOrigin }: { siteOrigin: string }) {
             onPublish={() => void handlePublish()}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={handleStartOver}
+          className="mt-3 self-center text-[13px] text-[color:var(--color-muted)] underline underline-offset-2"
+        >
+          {published ? "Create another page" : "Start over"}
+        </button>
       </aside>
     </div>
   );
